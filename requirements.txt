@@ -13,7 +13,6 @@ flasgger==0.9.7.1
 Flask==3.1.0
 flask-cors==5.0.1
 Flask-RESTful==0.3.10
-flask-restx==1.0.3
 Flask-SQLAlchemy==3.1.1
 flask-swagger==0.2.14
 greenlet==3.1.1
@@ -37,13 +36,6 @@ roman-numerals-py==3.1.0
 rpds-py==0.24.0
 six==1.17.0
 snowballstemmer==2.2.0
-Sphinx==8.2.3
-sphinxcontrib-applehelp==2.0.0
-sphinxcontrib-devhelp==2.0.0
-sphinxcontrib-htmlhelp==2.1.0
-sphinxcontrib-jsmath==1.0.1
-sphinxcontrib-qthelp==2.0.0
-sphinxcontrib-serializinghtml==2.0.0
 SQLAlchemy==2.0.37
 typing_extensions==4.12.2
 urllib3==2.3.0
