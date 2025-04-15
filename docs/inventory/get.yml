@@ -1,0 +1,36 @@
+Inventory Records
+---
+tags:
+  - Inventory
+description: >
+  Retrieves all of the inventory records from the `inventory` table with optional filters.
+
+  Example: A GET request to `/inventory?stock=10` returns all inventory records with a stock of 10.
+responses:
+  200:
+    description: JSON object containing an `inventory` array with all inventory records.
+parameters:
+  - in: query
+    name: inventory_id
+    required: false
+    description: Filters results matching the `inventory_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: medication_id
+    required: false
+    description: Filters results matching the `medication_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: stock
+    required: false
+    description: Filters results matching the `stock` column.
+    schema:
+      type: integer
+  - in: query
+    name: last_updated
+    required: false
+    description: Filters results using a partial match on the `last_updated` column.
+    schema:
+      type: string

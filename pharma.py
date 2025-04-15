@@ -2,6 +2,7 @@ from flask import Flask, request, Response, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc, text
 from flask_cors import CORS
+from flasgger import Swagger, swag_from
 import pika
 import requests
 
@@ -10,7 +11,16 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=f"http://{HOST}:3000") 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pharma.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SWAGGER'] = {
+    'title': 'BetterU API',
+    'description': 'The available endpoints for the BetterU service.',
+    'termsOfService': None,
+    'doc_dir': './docs/',
+    'uiversion': 3,
+}
+
 db = SQLAlchemy(app)
+swag = Swagger(app)
 
 def listen_for_orders():
     with app.app_context():
@@ -44,6 +54,37 @@ def listen_for_orders():
 @app.route("/")
 def home():
     return "<h1>It Works!</h1>"
+
+@app.route("/inventory", methods=['GET'])
+@swag_from('docs/inventory/get.yml')
+def get_inventory():
+    query = "SELECT * FROM inventory\n"
+
+    params = {
+        'inv_id': "" if request.args.get('inventory_id') is None else request.args.get('inventory_id'),
+        'med_id': "" if request.args.get('medication_id') is None else request.args.get('medication_id'),
+        'stock': "" if request.args.get('stock') is None else request.args.get('stock'),
+        'last_updated': "" if request.args.get('last_updated') is None else '%' + request.args.get('last_updated') + '%'
+    }
+    if params['inv_id'] != "" or params['med_id'] != "" or params['stock'] != "" or params['last_updated'] != "":
+        query += (
+            "WHERE " +
+            ("inventory_id = :inv_id\n" if params['inv_id'] != "" else "TRUE\n") +
+            "AND " + ("medication_id = :med_id\n" if params['med_id'] != "" else "TRUE\n") +
+            "AND " + ("stock = :stock\n" if params['stock'] != "" else "TRUE\n") +
+            "AND " + ("last_updated LIKE :last_updated\n" if params['last_updated'] != "" else "TRUE\n")
+        )
+
+    result = db.session.execute(text(query), params)
+    json_response = {'inventory': []}
+    for row in result:
+        json_response['inventory'].append({
+            'inventory_id': row.inventory_id,
+            'medication_id': row.medication_id,
+            'stock': row.stock,
+            'last_updated': row.last_updated
+        })
+    return json_response, 200
         
 def ResponseMessage(message, code):
     return {'message': message}, code
