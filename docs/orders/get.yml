@@ -1,0 +1,30 @@
+Orders Records
+---
+tags:
+  - Orders
+description: >
+  Retrieves all order records from the `orders` table with optional filters.
+  
+  Example: A GET request to `/orders?status=pending` returns all orders with status 'pending'.
+responses:
+  200:
+    description: JSON object containing an `orders` array with all order records.
+parameters:
+  - in: query
+    name: order_id
+    required: false
+    description: Filters results matching the `order_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: medication_id
+    required: false
+    description: Filters results matching the `medication_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: status
+    required: false
+    description: Filters results matching the `status` column. Supports partial matches.
+    schema:
+      type: string
