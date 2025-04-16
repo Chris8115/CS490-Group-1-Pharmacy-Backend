@@ -85,32 +85,6 @@ def get_inventory():
             'last_updated': row.last_updated
         })
     return json_response, 200
-
-@app.route("/order_history", methods=['GET'])
-@swag_from('docs/order/get.yml')
-def get_order_history():
-    query = "SELECT * FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id\n"
-    
-    params = {
-        'patient_id': "" if request.args.get('patient_id') is None else request.args.get('patient_id'),
-    }
-
-    if params['patient_id'] != "":
-        query += (
-            "WHERE " +
-            ("patient_id = :patient_id\n" if params['patient_id'] != "" else "TRUE\n")
-        )
-    
-    result = db.session.execute(text(query))
-    json_response = {'orders': []}
-    for row in result:
-        json_response['orders'].append({
-            'order_id': row.order_id,
-            'medication_id': row.medication_id,
-            'name': row.name,
-            'status': row.status
-        })
-    return json_response, 200
         
 def ResponseMessage(message, code):
     return {'message': message}, code
