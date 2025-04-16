@@ -1,0 +1,18 @@
+Orders Records
+---
+tags:
+  - Order
+description: >
+  Retrieves all order records from the `orders` table with optional filters.
+
+  Example: A GET request to `/order?stock=10` returns all order records with a patient id of 10.
+responses:
+  200:
+    description: JSON object containing an `order` array with all order records.
+parameters:
+  - in: query
+    name: patient_id
+    required: false
+    description: Filters results matching the `patient_id` column.
+    schema:
+      type: integer
