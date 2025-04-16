@@ -20,6 +20,7 @@ CREATE TABLE "orders" (
 	"order_id"	INTEGER NOT NULL UNIQUE,
 	"medication_id"	INTEGER NOT NULL,
 	"status"	TEXT NOT NULL DEFAULT 'pending',
+	"patient_id" INTEGER NOT NULL,
 	PRIMARY KEY("order_id"),
 	FOREIGN KEY("medication_id") REFERENCES "medications"("medication_id")
 );
