@@ -116,31 +116,42 @@ def get_medications():
     return json_response, 200
 
 
-@app.route("/orders", methods=['GET'])
+@app.route("/order_history", methods=['GET'])
 @swag_from('docs/orders/get.yml')
 def get_orders():
-    query = "SELECT * FROM orders\n"
+    query = "SELECT O.*, M.name FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id\n"
     params = {
         'order_id': "" if request.args.get('order_id') is None else request.args.get('order_id'),
         'medication_id': "" if request.args.get('medication_id') is None else request.args.get('medication_id'),
-        'status': "" if request.args.get('status') is None else '%' + request.args.get('status') + '%'
+        'status': "" if request.args.get('status') is None else '%' + request.args.get('status') + '%',
+        'patient_id': "" if request.args.get('patient_id') is None else request.args.get('patient_id')
     }
-    if params['order_id'] != "" or params['medication_id'] != "" or params['status'] != "":
-        query += (
-            "WHERE " +
-            ("order_id = :order_id\n" if params['order_id'] != "" else "TRUE\n") +
-            "AND " + ("medication_id = :medication_id\n" if params['medication_id'] != "" else "TRUE\n") +
-            "AND " + ("status LIKE :status\n" if params['status'] != "" else "TRUE\n")
-        )
+    
+    conditions = []
+    if params['order_id'] != "":
+        conditions.append("O.order_id = :order_id")
+    if params['medication_id'] != "":
+        conditions.append("O.medication_id = :medication_id")
+    if params['status'] != "":
+        conditions.append("O.status LIKE :status")
+    if params['patient_id'] != "":
+        conditions.append("O.patient_id = :patient_id")
+    
+    if conditions:
+        query += "WHERE " + " AND ".join(conditions) + "\n"
+    
     result = db.session.execute(text(query), params)
     json_response = {'orders': []}
     for row in result:
         json_response['orders'].append({
             'order_id': row.order_id,
             'medication_id': row.medication_id,
-            'status': row.status
+            'name': row.name,
+            'status': row.status,
+            'patient_id': row.patient_id
         })
     return json_response, 200
+
         
 def ResponseMessage(message, code):
     return {'message': message}, code
