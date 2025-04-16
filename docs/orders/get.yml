@@ -1,0 +1,60 @@
+Orders Records
+---
+tags:
+  - Orders
+description: >
+  Retrieves all order records from the `orders` table with optional filters.
+  The returned records include the medication name (retrieved by joining with the medications table).
+  
+  Example: A GET request to `/orders?status=pending&patient_id=123` returns all orders with status 'pending' for patient 123.
+responses:
+  200:
+    description: JSON object containing an `orders` array with all order records.
+    schema:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              order_id:
+                type: integer
+                description: The unique identifier of the order.
+              medication_id:
+                type: integer
+                description: The identifier of the medication.
+              name:
+                type: string
+                description: The name of the medication.
+              status:
+                type: string
+                description: The current status of the order.
+              patient_id:
+                type: integer
+                description: The identifier of the patient who placed the order.
+parameters:
+  - in: query
+    name: order_id
+    required: false
+    description: Filters results matching the `order_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: medication_id
+    required: false
+    description: Filters results matching the `medication_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: status
+    required: false
+    description: Filters results matching the `status` column. Supports partial matches.
+    schema:
+      type: string
+  - in: query
+    name: patient_id
+    required: false
+    description: Filters results matching the `patient_id` column.
+    schema:
+      type: integer

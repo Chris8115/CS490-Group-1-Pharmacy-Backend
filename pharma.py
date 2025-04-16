@@ -85,6 +85,73 @@ def get_inventory():
             'last_updated': row.last_updated
         })
     return json_response, 200
+
+@app.route("/medications", methods=['GET'])
+@swag_from('docs/medications/get.yml')
+def get_medications():
+    # SQL query to fetch medications
+    query = "SELECT * FROM medications\n"
+    # Gather optional parameters
+    params = {
+        'med_id': "" if request.args.get('medication_id') is None else request.args.get('medication_id'),
+        'name': "" if request.args.get('name') is None else '%' + request.args.get('name') + '%',
+        'description': "" if request.args.get('description') is None else '%' + request.args.get('description') + '%'
+    }
+    if params['med_id'] != "" or params['name'] != "" or params['description'] != "":
+        query += (
+            "WHERE " +
+            ("medication_id = :med_id\n" if params['med_id'] != "" else "TRUE\n") +
+            "AND " + ("name LIKE :name\n" if params['name'] != "" else "TRUE\n") +
+            "AND " + ("description LIKE :description\n" if params['description'] != "" else "TRUE\n")
+        )
+    # Execute query and build JSON response
+    result = db.session.execute(text(query), params)
+    json_response = {'medications': []}
+    for row in result:
+        json_response['medications'].append({
+            'medication_id': row.medication_id,
+            'name': row.name,
+            'description': row.description
+        })
+    return json_response, 200
+
+
+@app.route("/order_history", methods=['GET'])
+@swag_from('docs/orders/get.yml')
+def get_orders():
+    query = "SELECT O.*, M.name FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id\n"
+    params = {
+        'order_id': "" if request.args.get('order_id') is None else request.args.get('order_id'),
+        'medication_id': "" if request.args.get('medication_id') is None else request.args.get('medication_id'),
+        'status': "" if request.args.get('status') is None else '%' + request.args.get('status') + '%',
+        'patient_id': "" if request.args.get('patient_id') is None else request.args.get('patient_id')
+    }
+    
+    conditions = []
+    if params['order_id'] != "":
+        conditions.append("O.order_id = :order_id")
+    if params['medication_id'] != "":
+        conditions.append("O.medication_id = :medication_id")
+    if params['status'] != "":
+        conditions.append("O.status LIKE :status")
+    if params['patient_id'] != "":
+        conditions.append("O.patient_id = :patient_id")
+    
+    if conditions:
+        query += "WHERE " + " AND ".join(conditions) + "\n"
+    
+    result = db.session.execute(text(query), params)
+    json_response = {'orders': []}
+    for row in result:
+        json_response['orders'].append({
+            'order_id': row.order_id,
+            'medication_id': row.medication_id,
+            'name': row.name,
+            'status': row.status,
+            'patient_id': row.patient_id
+        })
+    return json_response, 200
+
         
 def ResponseMessage(message, code):
     return {'message': message}, code

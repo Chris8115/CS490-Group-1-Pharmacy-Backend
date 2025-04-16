@@ -1,0 +1,30 @@
+Medication Records
+---
+tags:
+  - Medications
+description: >
+  Retrieves all medication records from the `medications` table with optional filters.
+  
+  Example: A GET request to `/medications?name=aspirin` returns all medications where the name includes "aspirin".
+responses:
+  200:
+    description: JSON object containing a `medications` array with all medication records.
+parameters:
+  - in: query
+    name: medication_id
+    required: false
+    description: Filters results matching the `medication_id` column.
+    schema:
+      type: integer
+  - in: query
+    name: name
+    required: false
+    description: Filters results by text matching in the `name` column.
+    schema:
+      type: string
+  - in: query
+    name: description
+    required: false
+    description: Filters results by text matching in the `description` column.
+    schema:
+      type: string
