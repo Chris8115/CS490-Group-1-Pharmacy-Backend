@@ -157,6 +157,7 @@ def update_order(order_id):
         print(e)
         return ResponseMessage("Server error updating order.", 500)
     else:
+        db.session.commit()
         send_order_update(params)
         return ResponseMessage("Order Updated.", 200)
 
