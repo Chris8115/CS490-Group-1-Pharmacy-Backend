@@ -1,0 +1,16 @@
+Patient Records
+---
+tags:
+  - Patients
+description: >
+  Retrieves a patient.
+responses:
+  200:
+    description: JSON object containing an `orders` array with all order records.
+parameters:
+  - in: path
+    name: patient_id
+    required: false
+    description: Patient ID
+    schema:
+      type: integer

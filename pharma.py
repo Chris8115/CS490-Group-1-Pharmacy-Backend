@@ -160,6 +160,25 @@ def update_order(order_id):
         send_order_update(params)
         return ResponseMessage("Order Updated.", 200)
 
+@app.route('/patient/<int:patient_id>', methods=['GET'])
+@swag_from('docs/patient/get.yml')
+def get_patient(patient_id):
+    patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
+    user = requests.get(f"http://{HOST}:5000/users?user_id={patient_id}").json()['users']
+    print(patient)
+    if([] in (patient, user)):
+        return ResponseMessage("Invalid patient!", 400)
+    patient = patient[0]
+    user = user[0]
+    return {'patient': {
+        'patient_id': patient['patient_id'],
+        'first_name': user['first_name'],
+        'last_name': user['last_name'],
+        'medical_history': patient['medical_history'],
+        'ssn': patient['ssn']
+    }}, 200
+        
+
 @app.route("/orders", methods=['GET'])
 @swag_from('docs/orders/get.yml')
 def get_orders():
