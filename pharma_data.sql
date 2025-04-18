@@ -33,7 +33,7 @@ INSERT INTO "orders" VALUES (1, 1, 'pending', 101);
 INSERT INTO "orders" VALUES (2, 2, 'completed', 102);
 INSERT INTO "orders" VALUES (3, 3, 'pending', 103);
 INSERT INTO "orders" VALUES (4, 4, 'cancelled', 104);
-INSERT INTO "orders" VALUES (5, 5, 'shipped', 105);
+INSERT INTO "orders" VALUES (5, 5, 'pending', 105);
 INSERT INTO "orders" VALUES (6, 6, 'pending', 106);
 INSERT INTO "orders" VALUES (7, 7, 'completed', 107);
 INSERT INTO "orders" VALUES (8, 8, 'pending', 108);

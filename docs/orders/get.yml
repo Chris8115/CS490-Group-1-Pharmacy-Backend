@@ -49,7 +49,7 @@ parameters:
   - in: query
     name: status
     required: false
-    description: Filters results matching the `status` column. Supports partial matches.
+    description: Filters results matching the `status` column. (`accepted`, `rejected`, `pending`, `canceled`, `ready`)
     schema:
       type: string
   - in: query

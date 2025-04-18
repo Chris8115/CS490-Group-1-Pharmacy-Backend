@@ -1,0 +1,42 @@
+Order records
+---
+tags:
+    - Orders
+description:
+    Updates order record. All fields are optional.
+responses:
+    200:
+        description: prescription successfully updated.
+    400:
+        description: Client input validation error.
+    404:
+        description: prescription ID not found.
+    500:
+        description: Server/SQLite error.
+consumes:
+  - application/json
+parameters:
+    - in: path
+      name: order_id
+      required: true
+      description: order ID to update
+      schema:
+        type: integer
+    - in: body
+      name: prescription
+      required: true
+      description: | 
+        Prescription information
+      schema:
+        type: object
+        properties: 
+          medication_id: 
+            type: integer
+            description: Medication ID
+          status: 
+            type: string
+            description: Must be (`accepted`, `rejected`, `pending`, `canceled`, `ready`)
+          patient_id: 
+            type: integer
+            description: Patient ID
+
