@@ -1,0 +1,31 @@
+Medication records
+---
+tags:
+  - Medications
+description: >
+  Creates a new Medication record.
+responses:
+  201:
+    description: Medication created successfully.
+  400:
+    description: Missing required fields.
+  500:
+    description: Error creating Medication.
+parameters:
+  - in: body
+    name: body
+    required: true
+    description: JSON object containing the Forum Comments fields.      
+    required:
+      - name
+      - description
+    schema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Medication name
+        description:
+          type: string
+          description: The medication description
+
