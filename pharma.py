@@ -52,6 +52,15 @@ def listen_for_orders():
         channel.basic_consume(queue='orders', on_message_callback=order_callback)
         channel.start_consuming()
 
+def send_order_update(params):
+    message = json.dumps(params)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue='order_updates')
+    channel.basic_publish(exchange='', routing_key='order_updates', body=message)
+    print(f"Sent {message}")
+    connection.close()
+
 def send_new_medication(params):
     message = json.dumps(params)
     connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
@@ -153,6 +162,42 @@ def get_medications():
         })
     return json_response, 200
 
+@app.route('/orders/<int:order_id>', methods=['PATCH'])
+@swag_from('docs/orders/patch.yml')
+def update_order(order_id):
+    params = {
+        'order_id': order_id,
+        'medication_id': request.json.get('medication_id'),
+        'status': request.json.get('status'),
+        'patient_id': request.json.get('patient_id')
+    }
+    query = text(f"""
+        UPDATE orders SET
+            medication_id = {':medication_id' if params['medication_id'] != None else 'medication_id'},
+            status = {':status' if params['status'] != None else 'status'},
+            patient_id = {':patient_id' if params['patient_id'] != None else 'patient_id'}
+        WHERE order_id = :order_id
+    """)
+    #input validation
+    if(all(param == None for param in list(params.values())[1:])):
+        return ResponseMessage("Updated nothing.", 200)
+    if(not ValidTableID('orders', 'order_id', order_id)):
+        return ResponseMessage("Invalid Order ID.", 404)
+    if(params['medication_id'] != None and not ValidTableID('medications', 'medication_id', params['medication_id'])):
+        return ResponseMessage("Invalid Medication ID.", 400)
+    if(params['status'] != None and params['status'].lower() not in ('accepted', 'rejected', 'pending', 'canceled', 'ready')):
+        return ResponseMessage("Invalid status. (must be 'accepted', 'rejected', 'pending', 'canceled', or 'ready')", 400)
+    #database update
+    try:
+        db.session.execute(query, params)
+    except Exception as e:
+        print(e)
+        return ResponseMessage("Server error updating order.", 500)
+    else:
+        db.session.commit()
+        send_order_update(params)
+        return ResponseMessage("Order Updated.", 200)
+
 @app.route('/patient/<int:patient_id>', methods=['GET'])
 @swag_from('docs/patient/get.yml')
 def get_patient(patient_id):
@@ -172,7 +217,7 @@ def get_patient(patient_id):
     }}, 200
         
 
-@app.route("/order_history", methods=['GET'])
+@app.route("/orders", methods=['GET'])
 @swag_from('docs/orders/get.yml')
 def get_orders():
     query = "SELECT O.*, M.name FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id\n"
@@ -189,7 +234,7 @@ def get_orders():
     if params['medication_id'] != "":
         conditions.append("O.medication_id = :medication_id")
     if params['status'] != "":
-        conditions.append("O.status LIKE :status")
+        conditions.append("O.status = :status")
     if params['patient_id'] != "":
         conditions.append("O.patient_id = :patient_id")
     
@@ -208,6 +253,8 @@ def get_orders():
         })
     return json_response, 200
 
+def ValidTableID(table:str, id_field:str, id:int):
+    return db.session.execute(text(f"SELECT * FROM {table} WHERE {id_field} = :id"), {'id': id}) != None
         
 def ResponseMessage(message, code):
     return {'message': message}, code
