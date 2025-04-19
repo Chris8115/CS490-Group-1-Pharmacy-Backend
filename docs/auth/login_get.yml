@@ -1,0 +1,32 @@
+Login
+---
+tags:
+    - Web Functionality
+description:
+    Create a user session. 
+responses:
+    200:
+        description: JSON consisting of user ID, role, and message saying login successful
+    400:
+        description: User input invalid.
+    401:
+        description: Login failed.
+parameters:
+    - in: query
+      name: pharmacist_id
+      required: true
+      description: Pharmacist ID
+      schema:
+        type: integer
+    - in: query
+      name: password
+      required: true
+      description: User password
+      schema:
+        type: string
+    - in: query
+      name: remember
+      required: false
+      description: Remember user.
+      schema:
+        type: boolean
