@@ -1,2 +1,6 @@
 instance/pharma.db
 venv/
+.vs/
+__pycache__/
+*.py[cod]
+.env
