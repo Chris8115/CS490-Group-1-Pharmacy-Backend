@@ -61,6 +61,15 @@ def send_order_update(params):
     print(f"Sent {message}")
     connection.close()
 
+def send_new_medication(params):
+    message = json.dumps(params)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue='new_medication')
+    channel.basic_publish(exchange='', routing_key='new_medication', body=message)
+    print(f"Sent {message}")
+    connection.close()
+
 @app.route("/")
 def home():
     return "<h1>It Works!</h1>"
@@ -95,6 +104,34 @@ def get_inventory():
             'last_updated': row.last_updated
         })
     return json_response, 200
+
+@app.route("/medications", methods=['POST'])
+@swag_from("docs/medications/post.yml")
+def add_medications():
+    params = {
+        'name': request.json.get('name'),
+        'description': request.json.get('description')
+    }
+    query = text("""
+        INSERT INTO medications (medication_id, name, description)
+        VALUES (
+            (SELECT MAX(medication_id) FROM medications) + 1,
+            :name,
+            :description
+        )
+    """)
+    #input validation
+    if(any(tok in params.values() for tok in (None, ""))):
+        return ResponseMessage("Required parameters not sent.", 400)
+    try:
+        db.session.execute(query, params)
+    except Exception as e:
+        print(e)
+        return ResponseMessage("Server error, please try again later.", 500)
+    else:
+        db.session.commit()
+        send_new_medication(params)
+        return ResponseMessage("Medication Added.", 201)
 
 @app.route("/medications", methods=['GET'])
 @swag_from('docs/medications/get.yml')
