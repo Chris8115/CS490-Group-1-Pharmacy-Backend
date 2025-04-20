@@ -1,0 +1,11 @@
+Login Check
+---
+tags:
+    - Web Functionality
+description:
+    Check user login state.
+responses:
+    200:
+        description: Current user is logged in.
+    401:
+        description: Unauthorized, user was signed out.

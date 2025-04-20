@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+import os
+load_dotenv()  
+
 from flask import Flask, request, Response, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc, text
@@ -6,6 +10,8 @@ from flasgger import Swagger, swag_from
 import pika
 import requests
 import json
+from flask_login import LoginManager, UserMixin, login_user, LoginManager, login_required, logout_user, current_user
+import re
 
 HOST = 'localhost'
 app = Flask(__name__)
@@ -20,8 +26,26 @@ app.config['SWAGGER'] = {
     'uiversion': 3,
 }
 
+app.config['SECRET_KEY'] = os.getenv("CRAZE_SECRET_KEY") #super duper secret 🤫
+app.config['SESSION_COOKIE_SECURE']=False
+
 db = SQLAlchemy(app)
 swag = Swagger(app)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(Pharmacists, int(user_id))
+
+class Pharmacists(db.Model, UserMixin):
+    pharmacist_id = db.Column(db.Integer, primary_key=True)
+    pharmacy_location = db.Column(db.Text, nullable=False)
+    password = db.Column(db.Text, nullable=False)
+    def get_id(self):
+        return str(self.pharmacist_id)
 
 def listen_for_orders():
     with app.app_context():
@@ -74,7 +98,44 @@ def send_new_medication(params):
 def home():
     return "<h1>It Works!</h1>"
 
+@app.route('/login', methods=['GET', 'POST'])
+@swag_from("docs/auth/login_get.yml", methods=['GET'])
+@swag_from("docs/auth/login_post.yml", methods=['POST'])
+def login():
+    if(request.args.get('next') != None):
+        return ResponseMessage(f"Login Error: Login required to access route {request.args.get('next')}", 401)
+    method_source = request.args if request.method == 'GET' else request.json
+    params = {
+        'pharmacist_id': method_source.get('pharmacist_id'),
+        'password': method_source.get('password'),
+        'remember': method_source.get('remember') if method_source.get('remember') != None else False
+    }
+    if((None, "") in list(params.values())[:-1]):
+        return ResponseMessage("ID and password required.", 400)
+    user = Pharmacists.query.filter_by(pharmacist_id=params['pharmacist_id']).first()
+    if user == None:
+        return ResponseMessage("Invalid user credentials.", 401)
+    elif(user.password != params['password']):
+        return ResponseMessage("Invalid password.", 401)
+    else:
+        login_user(user, params['remember'] or False)
+        return {'pharmacist_id': current_user.pharmacist_id, 'pharmacy_location': current_user.pharmacy_location, 'message':'Login successful.'}, 200
+
+@app.route('/logout', methods=['GET', 'POST'])
+@login_required
+@swag_from('docs/auth/logout.yml', methods=['GET', 'POST'])
+def logout():
+    logout_user()
+    return ResponseMessage("User Logged out.", 200)
+
+@app.route('/login_check')
+@login_required
+@swag_from('docs/auth/login_check.yml')
+def login_check():
+    return ResponseMessage(f"User is logged in. ID: {current_user.get_id()}", 200)
+
 @app.route("/inventory", methods=['GET'])
+@login_required
 @swag_from('docs/inventory/get.yml')
 def get_inventory():
     query = "SELECT * FROM inventory\n"
@@ -106,6 +167,7 @@ def get_inventory():
     return json_response, 200
 
 @app.route("/medications", methods=['POST'])
+@login_required
 @swag_from("docs/medications/post.yml")
 def add_medications():
     params = {
@@ -134,6 +196,7 @@ def add_medications():
         return ResponseMessage("Medication Added.", 201)
 
 @app.route("/medications", methods=['GET'])
+@login_required
 @swag_from('docs/medications/get.yml')
 def get_medications():
     # SQL query to fetch medications
@@ -163,6 +226,7 @@ def get_medications():
     return json_response, 200
 
 @app.route('/orders/<int:order_id>', methods=['PATCH'])
+@login_required
 @swag_from('docs/orders/patch.yml')
 def update_order(order_id):
     params = {
@@ -199,6 +263,7 @@ def update_order(order_id):
         return ResponseMessage("Order Updated.", 200)
 
 @app.route('/patient/<int:patient_id>', methods=['GET'])
+@login_required
 @swag_from('docs/patient/get.yml')
 def get_patient(patient_id):
     patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
@@ -218,6 +283,7 @@ def get_patient(patient_id):
         
 
 @app.route("/orders", methods=['GET'])
+@login_required
 @swag_from('docs/orders/get.yml')
 def get_orders():
     query = "SELECT O.*, M.name FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id\n"

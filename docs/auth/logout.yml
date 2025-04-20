@@ -1,0 +1,9 @@
+Logout
+---
+tags:
+    - Web Functionality
+description:
+    End a user session
+responses:
+    200:
+        description: User Logged out.
