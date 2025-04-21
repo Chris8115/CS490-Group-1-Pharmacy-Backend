@@ -33,6 +33,7 @@ responses:
               patient_id:
                 type: integer
                 description: The identifier of the patient who placed the order.
+              
 parameters:
   - in: query
     name: order_id
@@ -58,3 +59,9 @@ parameters:
     description: Filters results matching the `patient_id` column.
     schema:
       type: integer
+  - in: query
+    name: order_by
+    required: false
+    description: sorts results by SQL order options. (ASC or DESC)
+    schema:
+      type: string
