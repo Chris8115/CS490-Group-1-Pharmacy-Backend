@@ -54,13 +54,14 @@ def listen_for_orders():
             print(f"MESSAGE:: Medication ID: {medication_id} Patient ID: {patient_id}")
             try:
                 db.session.execute(text("""
-                    INSERT INTO orders (order_id, medication_id, status)
+                    INSERT INTO orders (order_id, medication_id, status, patient_id)
                     VALUES (
                         (SELECT MAX(order_id) FROM orders) + 1,
                         :med,
-                        'pending'
+                        'pending',
+                        :pid
                     )
-                """), {'med': medication_id })
+                """), {'med': medication_id, 'pid': patient_id})
                 
             except Exception as e:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
@@ -68,7 +69,7 @@ def listen_for_orders():
             else:
                 db.session.commit()
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                print(requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()) #Just testing rest call
+                #print(requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()) #Just testing rest call
                 print("SQLITE:: Added order.")
         connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         channel = connection.channel()
@@ -266,6 +267,8 @@ def update_order(order_id):
 @login_required
 @swag_from('docs/patient/get.yml')
 def get_patient(patient_id):
+    if(patient_id == None):
+        query = ''
     patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
     user = requests.get(f"http://{HOST}:5000/users?user_id={patient_id}").json()['users']
     print(patient)
