@@ -19,8 +19,8 @@ CORS(app, supports_credentials=True, origins=f"http://{HOST}:3000")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pharma.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SWAGGER'] = {
-    'title': 'BetterU API',
-    'description': 'The available endpoints for the BetterU service.',
+    'title': 'BigPharma API',
+    'description': 'The available endpoints for the BigPharma service.',
     'termsOfService': None,
     'doc_dir': './docs/',
     'uiversion': 3,
@@ -267,8 +267,6 @@ def update_order(order_id):
 @login_required
 @swag_from('docs/patient/get.yml')
 def get_patient(patient_id):
-    if(patient_id == None):
-        query = ''
     patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
     user = requests.get(f"http://{HOST}:5000/users?user_id={patient_id}").json()['users']
     print(patient)
