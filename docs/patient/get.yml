@@ -3,10 +3,10 @@ Patient Records
 tags:
   - Patients
 description: >
-  Retrieves a patient.
+  Retrieves a patient. DEPRECATED. DON'T USE THIS!
 responses:
   200:
-    description: JSON object containing an `orders` array with all order records.
+    description: JSON object containing an `patient`
 parameters:
   - in: path
     name: patient_id

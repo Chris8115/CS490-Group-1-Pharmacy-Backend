@@ -1,0 +1,34 @@
+Patient Records
+---
+tags:
+  - Patients
+description: >
+  Retrieves list of patients with optional filters.
+responses:
+  200:
+    description: JSON object containing a `patients` array with all patient records.
+parameters:
+  - in: query
+    name: patient_id
+    required: false
+    description: Matches fields with this patient_id 
+    schema:
+      type: integer
+  - in: query
+    name: first_name
+    required: false
+    description: Partially matches first_name field.
+    schema:
+      type: string
+  - in: query
+    name: last_name
+    required: false
+    description: Partially matches last_name field.
+    schema:
+      type: string
+  - in: query
+    name: medical_history
+    required: false
+    description: Partially matches medical_history field (for example, to search patients with diabetes.)
+    schema:
+      type: string
