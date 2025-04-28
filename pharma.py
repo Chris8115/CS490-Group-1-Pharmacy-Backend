@@ -336,7 +336,8 @@ def get_orders():
         'order_id': "" if request.args.get('order_id') is None else request.args.get('order_id'),
         'medication_id': "" if request.args.get('medication_id') is None else request.args.get('medication_id'),
         'status': "" if request.args.get('status') is None else '%' + request.args.get('status') + '%',
-        'patient_id': "" if request.args.get('patient_id') is None else request.args.get('patient_id')
+        'patient_id': "" if request.args.get('patient_id') is None else request.args.get('patient_id'),
+        'order_by': "DESC" if request.args.get('order_by') == None else request.args.get('order_by')
     }
     
     conditions = []
@@ -351,6 +352,7 @@ def get_orders():
     
     if conditions:
         query += "WHERE " + " AND ".join(conditions) + "\n"
+    query += (f"ORDER BY order_id {'ASC' if params['order_by'].upper() == 'ASC' else 'DESC'}")
     
     result = db.session.execute(text(query), params)
     json_response = {'orders': []}
