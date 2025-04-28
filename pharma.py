@@ -19,8 +19,8 @@ CORS(app, supports_credentials=True, origins=f"http://{HOST}:3000")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pharma.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SWAGGER'] = {
-    'title': 'BetterU API',
-    'description': 'The available endpoints for the BetterU service.',
+    'title': 'BigPharma API',
+    'description': 'The available endpoints for the BigPharma service.',
     'termsOfService': None,
     'doc_dir': './docs/',
     'uiversion': 3,
@@ -54,13 +54,14 @@ def listen_for_orders():
             print(f"MESSAGE:: Medication ID: {medication_id} Patient ID: {patient_id}")
             try:
                 db.session.execute(text("""
-                    INSERT INTO orders (order_id, medication_id, status)
+                    INSERT INTO orders (order_id, medication_id, status, patient_id)
                     VALUES (
                         (SELECT MAX(order_id) FROM orders) + 1,
                         :med,
-                        'pending'
+                        'pending',
+                        :pid
                     )
-                """), {'med': medication_id })
+                """), {'med': medication_id, 'pid': patient_id})
                 
             except Exception as e:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
@@ -68,7 +69,7 @@ def listen_for_orders():
             else:
                 db.session.commit()
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                print(requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()) #Just testing rest call
+                #print(requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()) #Just testing rest call
                 print("SQLITE:: Added order.")
         connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         channel = connection.channel()
@@ -94,9 +95,24 @@ def send_new_medication(params):
     print(f"Sent {message}")
     connection.close()
 
+def request_patient(patient_id):
+    message = patient_id
+    connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue='patient_request')
+    channel.basic_publish(exchange='', routing_key='patient_request', body=message)
+    print(f"Requested patient {message}")
+    connection.close()
+
 @app.route("/")
 def home():
-    return "<h1>It Works!</h1>"
+    return f"""
+        <h1>Pharmacy Index</h1>
+        <ul>
+            <li><a href='http://{HOST}:3000/'>Pharmacy Home</a></li>
+            <li><a href='http://{HOST}:5001/apidocs'>API Documentation</a></li>
+            <li><a href='http://{HOST}:15672/'>RabbitMQ Dashboard</a></li>
+        </ul>"""
 
 @app.route('/login', methods=['GET', 'POST'])
 @swag_from("docs/auth/login_get.yml", methods=['GET'])
@@ -280,13 +296,42 @@ def get_patient(patient_id):
         'medical_history': patient['medical_history'],
         'ssn': patient['ssn']
     }}, 200
-        
+
+@app.route('/patients', methods=['GET'])
+@login_required
+@swag_from('docs/patients/get.yml')
+def get_patients():
+    query = text(f"""
+        SELECT * FROM patients
+        WHERE {'first_name LIKE :first_name' if request.args.get('first_name') else 'TRUE'}
+        AND {'last_name LIKE :last_name' if request.args.get('last_name') else 'TRUE'}
+        AND {'patient_id = :patient_id' if request.args.get('patient_id') else 'TRUE'}
+        AND {'medical_history LIKE :medical_history' if request.args.get('medical_history') else 'TRUE'}
+    """)
+    params = {
+        'patient_id': request.args.get('patient_id'),
+        'first_name': f"%{request.args.get('first_name')}%",
+        'last_name': f"%{request.args.get('last_name')}%",
+        'medical_history': f"%{request.args.get('medical_history')}%"
+    }
+    result = db.session.execute(query, params)
+    response_json = {"patients":[]}
+    for row in result:
+        response_json['patients'].append({
+            'patient_id': row.patient_id,
+            'first_name': row.first_name,
+            'last_name': row.last_name,
+            'medical_history': row.medical_history,
+            'ssn': row.ssn
+        })
+    return response_json, 200
+    
 
 @app.route("/orders", methods=['GET'])
 @login_required
 @swag_from('docs/orders/get.yml')
 def get_orders():
-    query = "SELECT O.*, M.name FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id\n"
+    query = "SELECT O.*, M.name, P.first_name, P.last_name FROM orders AS O JOIN medications AS M ON M.medication_id = O.medication_id INNER JOIN patients AS P on O.patient_id = P.patient_id\n"
     params = {
         'order_id': "" if request.args.get('order_id') is None else request.args.get('order_id'),
         'medication_id': "" if request.args.get('medication_id') is None else request.args.get('medication_id'),
@@ -317,7 +362,9 @@ def get_orders():
             'medication_id': row.medication_id,
             'name': row.name,
             'status': row.status,
-            'patient_id': row.patient_id
+            'patient_id': row.patient_id,
+            'first_name': row.first_name,
+            'last_name': row.last_name
         })
     return json_response, 200
 

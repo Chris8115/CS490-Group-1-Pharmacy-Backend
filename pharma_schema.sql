@@ -20,9 +20,18 @@ CREATE TABLE "orders" (
 	"order_id"	INTEGER NOT NULL UNIQUE,
 	"medication_id"	INTEGER NOT NULL,
 	"status"	TEXT NOT NULL DEFAULT 'pending',
-	"patient_id" INTEGER NOT NULL,
+	"patient_id"	INTEGER NOT NULL,
 	PRIMARY KEY("order_id"),
 	FOREIGN KEY("medication_id") REFERENCES "medications"("medication_id")
+);
+DROP TABLE IF EXISTS "patients";
+CREATE TABLE "patients" (
+	"patient_id"	INTEGER NOT NULL UNIQUE,
+	"first_name"	TEXT NOT NULL,
+	"last_name"	TEXT NOT NULL,
+	"medical_history"	TEXT NOT NULL,
+	"ssn"	INTEGER NOT NULL,
+	PRIMARY KEY("patient_id")
 );
 DROP TABLE IF EXISTS "pharmacists";
 CREATE TABLE "pharmacists" (
