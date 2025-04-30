@@ -77,6 +77,35 @@ def listen_for_orders():
         channel.basic_consume(queue='orders', on_message_callback=order_callback)
         channel.start_consuming()
 
+def listen_for_patients():
+  with app.app_context():
+        def patient_callback(ch, method, properties, body):
+            params = json.loads(body.decode())
+            print(f"MESSAGE:: JSON data: {body.decode()}")
+            try:
+                db.session.execute(text(f"""
+                INSERT INTO patients (patient_id, first_name, last_name, medical_history, ssn)
+                VALUES (
+                    :patient_id,
+                    :first_name,
+                    :last_name,
+                    :medical_history,
+                    :ssn
+                )
+                """), params)
+            except Exception as e:
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+                print(f"SQLITE ERROR:: {e}")
+            else:
+                db.session.commit()
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                print("SQLITE:: Added patient!")
+        connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
+        channel = connection.channel()
+        channel.queue_declare(queue='patient_publish')
+        channel.basic_consume(queue='patient_publish', on_message_callback=patient_callback)
+        channel.start_consuming()
+
 def send_order_update(params):
     message = json.dumps(params)
     connection = pika.BlockingConnection(pika.ConnectionParameters(HOST))
@@ -377,4 +406,5 @@ def ResponseMessage(message, code):
 if __name__ == "__main__":
     import threading
     threading.Thread(target=listen_for_orders, daemon=True).start()
+    threading.Thread(target=listen_for_patients, daemon=True).start()
     app.run(debug=True, port=5001)
