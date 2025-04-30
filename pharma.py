@@ -372,6 +372,7 @@ def ValidTableID(table:str, id_field:str, id:int):
     return db.session.execute(text(f"SELECT * FROM {table} WHERE {id_field} = :id"), {'id': id}) != None
         
 def ResponseMessage(message, code):
+    print(f"REST call returned with code {code},\nMessage: {message}")
     return {'message': message}, code
 
 if __name__ == "__main__":
