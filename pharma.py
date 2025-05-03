@@ -409,7 +409,8 @@ def get_orders():
             'status': row.status,
             'patient_id': row.patient_id,
             'first_name': row.first_name,
-            'last_name': row.last_name
+            'last_name': row.last_name,
+            'quantity': row.quantity
         })
     return json_response, 200
 
