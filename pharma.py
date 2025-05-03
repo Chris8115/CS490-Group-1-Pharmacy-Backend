@@ -306,7 +306,7 @@ def update_order(order_id):
         return ResponseMessage("Invalid Medication ID.", 400)
     if(params['status'] != None and params['status'].lower() not in ('accepted', 'rejected', 'pending', 'canceled', 'ready')):
         return ResponseMessage("Invalid status. (must be 'accepted', 'rejected', 'pending', 'canceled', or 'ready')", 400)
-    remainder = db.session.execute('SELECT (stock - :quantity) AS remainder FROM inventory WHERE medication_id = :medication_id', params).first().remainder
+    remainder = db.session.execute(text('SELECT (stock - :quantity) AS remainder FROM inventory WHERE medication_id = :medication_id'), params).first().remainder
     if(params['status'].lower() == 'accepted' and remainder and params['quantity'] and remainder < 0):
         return ResponseMessage("Not enough inventory to accept this prescription.", 400)
     #database update
@@ -410,7 +410,8 @@ def get_orders():
             'patient_id': row.patient_id,
             'first_name': row.first_name,
             'last_name': row.last_name,
-            'quantity': row.quantity
+            'quantity': row.quantity,
+            'date_prescribed': row.dat_prescribed
         })
     return json_response, 200
 
