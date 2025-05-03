@@ -50,18 +50,20 @@ class Pharmacists(db.Model, UserMixin):
 def listen_for_orders():
     with app.app_context():
         def order_callback(ch, method, properties, body):
-            (medication_id, patient_id) = body.decode().split(",")
+            (medication_id, patient_id, quantity) = body.decode().split(",")
             print(f"MESSAGE:: Medication ID: {medication_id} Patient ID: {patient_id}")
             try:
                 db.session.execute(text("""
-                    INSERT INTO orders (order_id, medication_id, status, patient_id)
+                    INSERT INTO orders (order_id, medication_id, patient_id, date_prescribed, status, quantity)
                     VALUES (
                         (SELECT MAX(order_id) FROM orders) + 1,
                         :med,
+                        :pid,
+                        CURRENT_TIMESTAMP,
                         'pending',
-                        :pid
+                        :quantity
                     )
-                """), {'med': medication_id, 'pid': patient_id})
+                """), {'med': medication_id, 'pid': patient_id, 'quantity': quantity})
                 
             except Exception as e:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
@@ -69,7 +71,6 @@ def listen_for_orders():
             else:
                 db.session.commit()
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                #print(requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()) #Just testing rest call
                 print("SQLITE:: Added order.")
         connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         channel = connection.channel()
@@ -278,27 +279,41 @@ def update_order(order_id):
         'order_id': order_id,
         'medication_id': request.json.get('medication_id'),
         'status': request.json.get('status'),
-        'patient_id': request.json.get('patient_id')
+        'patient_id': request.json.get('patient_id'),
+        'quantity': request.json.get('quantity')
     }
     query = text(f"""
         UPDATE orders SET
             medication_id = {':medication_id' if params['medication_id'] != None else 'medication_id'},
             status = {':status' if params['status'] != None else 'status'},
             patient_id = {':patient_id' if params['patient_id'] != None else 'patient_id'}
+            quantity = {':quantity' if params['quantity'] else 'quantity'}
         WHERE order_id = :order_id
+    """)
+    inventory_query = text(f"""
+        UPDATE inventory SET
+            stock = stock - :quantity
+        WHERE medication_id = :medication_id
     """)
     #input validation
     if(all(param == None for param in list(params.values())[1:])):
         return ResponseMessage("Updated nothing.", 200)
     if(not ValidTableID('orders', 'order_id', order_id)):
         return ResponseMessage("Invalid Order ID.", 404)
+    if(params['quantity'] and int(params['quantity']) < 1):
+        return ResponseMessage("Invalid quantity.", 400)
     if(params['medication_id'] != None and not ValidTableID('medications', 'medication_id', params['medication_id'])):
         return ResponseMessage("Invalid Medication ID.", 400)
     if(params['status'] != None and params['status'].lower() not in ('accepted', 'rejected', 'pending', 'canceled', 'ready')):
         return ResponseMessage("Invalid status. (must be 'accepted', 'rejected', 'pending', 'canceled', or 'ready')", 400)
+    remainder = db.session.execute(text('SELECT (stock - :quantity) AS remainder FROM inventory WHERE medication_id = :medication_id'), params).first().remainder
+    if(params['status'].lower() == 'accepted' and remainder and params['quantity'] and remainder < 0):
+        return ResponseMessage("Not enough inventory to accept this prescription.", 400)
     #database update
     try:
         db.session.execute(query, params)
+        if(params['status'].lower() == 'accepted'):
+            db.session.execute(inventory_query, params)
     except Exception as e:
         print(e)
         return ResponseMessage("Server error updating order.", 500)
@@ -307,24 +322,25 @@ def update_order(order_id):
         send_order_update(params)
         return ResponseMessage("Order Updated.", 200)
 
-@app.route('/patient/<int:patient_id>', methods=['GET'])
-@login_required
-@swag_from('docs/patient/get.yml')
-def get_patient(patient_id):
-    patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
-    user = requests.get(f"http://{HOST}:5000/users?user_id={patient_id}").json()['users']
-    print(patient)
-    if([] in (patient, user)):
-        return ResponseMessage("Invalid patient!", 400)
-    patient = patient[0]
-    user = user[0]
-    return {'patient': {
-        'patient_id': patient['patient_id'],
-        'first_name': user['first_name'],
-        'last_name': user['last_name'],
-        'medical_history': patient['medical_history'],
-        'ssn': patient['ssn']
-    }}, 200
+# FUNCTION REMOVED... USES REST CALLS...
+#@app.route('/patient/<int:patient_id>', methods=['GET'])
+#@login_required
+#@swag_from('docs/patient/get.yml')
+#def get_patient(patient_id):
+#    patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
+#    user = requests.get(f"http://{HOST}:5000/users?user_id={patient_id}").json()['users']
+#    print(patient)
+#    if([] in (patient, user)):
+#        return ResponseMessage("Invalid patient!", 400)
+#    patient = patient[0]
+#    user = user[0]
+#    return {'patient': {
+#        'patient_id': patient['patient_id'],
+#        'first_name': user['first_name'],
+#        'last_name': user['last_name'],
+#        'medical_history': patient['medical_history'],
+#        'ssn': patient['ssn']
+#    }}, 200
 
 @app.route('/patients', methods=['GET'])
 @login_required
@@ -393,7 +409,9 @@ def get_orders():
             'status': row.status,
             'patient_id': row.patient_id,
             'first_name': row.first_name,
-            'last_name': row.last_name
+            'last_name': row.last_name,
+            'quantity': row.quantity,
+            'date_prescribed': row.dat_prescribed
         })
     return json_response, 200
 
