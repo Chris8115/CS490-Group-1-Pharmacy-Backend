@@ -375,7 +375,7 @@ def get_orders():
     if params['medication_id'] != "":
         conditions.append("O.medication_id = :medication_id")
     if params['status'] != "":
-        conditions.append("O.status = :status")
+        conditions.append("O.status LIKE :status")
     if params['patient_id'] != "":
         conditions.append("O.patient_id = :patient_id")
     
