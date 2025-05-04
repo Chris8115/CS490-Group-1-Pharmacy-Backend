@@ -286,7 +286,7 @@ def update_order(order_id):
         UPDATE orders SET
             medication_id = {':medication_id' if params['medication_id'] != None else 'medication_id'},
             status = {':status' if params['status'] != None else 'status'},
-            patient_id = {':patient_id' if params['patient_id'] != None else 'patient_id'}
+            patient_id = {':patient_id' if params['patient_id'] != None else 'patient_id'},
             quantity = {':quantity' if params['quantity'] else 'quantity'}
         WHERE order_id = :order_id
     """)
