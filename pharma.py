@@ -217,22 +217,33 @@ def get_inventory():
 @swag_from("docs/medications/post.yml")
 def add_medications():
     params = {
+        'medication_id': db.session.execute(text("SELECT (MAX(medication_id) + 1) AS medication_id FROM medications")).first().medication_id,
         'name': request.json.get('name'),
         'description': request.json.get('description')
     }
     query = text("""
         INSERT INTO medications (medication_id, name, description)
         VALUES (
-            (SELECT MAX(medication_id) FROM medications) + 1,
+            :medication_id,
             :name,
             :description
         )
+    """)
+    inventory_query = text("""
+        INSERT INTO inventory (inventory_id, medication_id, stock, last_updated)
+        VALUES (
+            :medication_id,
+            :medication_id,
+            500,
+            CURRENT_TIMESTAMP
+        )                       
     """)
     #input validation
     if(any(tok in params.values() for tok in (None, ""))):
         return ResponseMessage("Required parameters not sent.", 400)
     try:
         db.session.execute(query, params)
+        db.session.execute(inventory_query, params)
     except Exception as e:
         print(e)
         return ResponseMessage("Server error, please try again later.", 500)
@@ -292,7 +303,8 @@ def update_order(order_id):
     """)
     inventory_query = text(f"""
         UPDATE inventory SET
-            stock = stock - :quantity
+            stock = stock - :quantity,
+            last_updated = CURRENT_TIMESTAMP
         WHERE medication_id = :medication_id
     """)
     #input validation
@@ -321,26 +333,6 @@ def update_order(order_id):
         db.session.commit()
         send_order_update(params)
         return ResponseMessage("Order Updated.", 200)
-
-# FUNCTION REMOVED... USES REST CALLS...
-#@app.route('/patient/<int:patient_id>', methods=['GET'])
-#@login_required
-#@swag_from('docs/patient/get.yml')
-#def get_patient(patient_id):
-#    patient =  requests.get(f"http://{HOST}:5000/patients?patient_id={patient_id}").json()['patients']
-#    user = requests.get(f"http://{HOST}:5000/users?user_id={patient_id}").json()['users']
-#    print(patient)
-#    if([] in (patient, user)):
-#        return ResponseMessage("Invalid patient!", 400)
-#    patient = patient[0]
-#    user = user[0]
-#    return {'patient': {
-#        'patient_id': patient['patient_id'],
-#        'first_name': user['first_name'],
-#        'last_name': user['last_name'],
-#        'medical_history': patient['medical_history'],
-#        'ssn': patient['ssn']
-#    }}, 200
 
 @app.route('/patients', methods=['GET'])
 @login_required
