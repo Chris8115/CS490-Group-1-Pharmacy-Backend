@@ -411,7 +411,7 @@ def get_orders():
             'first_name': row.first_name,
             'last_name': row.last_name,
             'quantity': row.quantity,
-            'date_prescribed': row.dat_prescribed
+            'date_prescribed': row.date_prescribed
         })
     return json_response, 200
 
