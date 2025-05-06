@@ -35,8 +35,11 @@ parameters:
             description: Medication ID
           status: 
             type: string
-            description: Must be (`accepted`, `rejected`, `pending`, `canceled`, `ready`)
+            description: Must be (`accepted`, `rejected`, `pending`, `ready`)
           patient_id: 
             type: integer
             description: Patient ID
+          quantity: 
+            type: integer
+            description: Order Quantity
 
