@@ -12,6 +12,7 @@ import requests
 import json
 from flask_login import LoginManager, UserMixin, login_user, LoginManager, login_required, logout_user, current_user
 import re
+import sys
 
 HOST = 'localhost'
 app = Flask(__name__)
@@ -408,4 +409,15 @@ if __name__ == "__main__":
     import threading
     threading.Thread(target=listen_for_orders, daemon=True).start()
     threading.Thread(target=listen_for_patients, daemon=True).start()
-    app.run(debug=True, port=5001)
+    if len(sys.argv) > 1:
+        #print("HTTP_TYPE", HTTP_TYPE)
+        #print("PUBLIC HOST", PUBLIC_HOST)
+        print("HOST", HOST)
+        app.run(debug=True, port=5001)
+    else:
+        print("*You are not in debug mode, add any 1 param to run as localhost*")
+        PORT = ''
+        HOST = "0.0.0.0"
+        HTTP_TYPE = "https"
+        print("HOST", HOST)
+        app.run(host=HOST, port=5001) 
