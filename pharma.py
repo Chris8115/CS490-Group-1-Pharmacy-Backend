@@ -83,16 +83,29 @@ def listen_for_patients():
         def patient_callback(ch, method, properties, body):
             params = json.loads(body.decode())
             print(f"MESSAGE:: JSON data: {body.decode()}")
+
             try:
-                db.session.execute(text(f"""
-                INSERT INTO patients (patient_id, first_name, last_name, medical_history, ssn)
-                VALUES (
-                    :patient_id,
-                    :first_name,
-                    :last_name,
-                    :medical_history,
-                    :ssn
-                )
+                # Check if patient already exists
+                exists = db.session.execute(
+                    text("SELECT 1 FROM patients WHERE patient_id = :patient_id"),
+                    {"patient_id": params["patient_id"]}
+                ).first()
+
+                if exists:
+                    print(f"SKIPPED:: Patient ID {params['patient_id']} already exists.")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
+
+                # Insert new patient
+                db.session.execute(text("""
+                    INSERT INTO patients (patient_id, first_name, last_name, medical_history, ssn)
+                    VALUES (
+                        :patient_id,
+                        :first_name,
+                        :last_name,
+                        :medical_history,
+                        :ssn
+                    )
                 """), params)
             except Exception as e:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
