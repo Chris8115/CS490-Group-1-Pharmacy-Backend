@@ -375,7 +375,31 @@ def get_patients():
             'ssn': row.ssn
         })
     return response_json, 200
-    
+
+@app.route("/patients/<int:patient_id>", methods=["DELETE"])
+@login_required
+@swag_from("docs/patient/delete.yml")
+def delete_patient(patient_id):
+    try:
+        result = db.session.execute(
+            text("SELECT * FROM patients WHERE patient_id = :patient_id"),
+            {"patient_id": patient_id}
+        )
+        if result.first() is None:
+            return Response(f"No patient with ID {patient_id}", status=400)
+
+        db.session.execute(
+            text("DELETE FROM patients WHERE patient_id = :patient_id"),
+            {"patient_id": patient_id}
+        )
+
+    except Exception as e:
+        print(f"DELETE ERROR:: {e}")
+        return Response(status=500)
+    else:
+        db.session.commit()
+        return Response(status=200)
+
 
 @app.route("/orders", methods=['GET'])
 @login_required
