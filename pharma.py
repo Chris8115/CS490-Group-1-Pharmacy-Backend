@@ -84,16 +84,29 @@ def listen_for_patients():
         def patient_callback(ch, method, properties, body):
             params = json.loads(body.decode())
             print(f"MESSAGE:: JSON data: {body.decode()}")
+
             try:
-                db.session.execute(text(f"""
-                INSERT INTO patients (patient_id, first_name, last_name, medical_history, ssn)
-                VALUES (
-                    :patient_id,
-                    :first_name,
-                    :last_name,
-                    :medical_history,
-                    :ssn
-                )
+                # Check if patient already exists
+                exists = db.session.execute(
+                    text("SELECT 1 FROM patients WHERE patient_id = :patient_id"),
+                    {"patient_id": params["patient_id"]}
+                ).first()
+
+                if exists:
+                    print(f"SKIPPED:: Patient ID {params['patient_id']} already exists.")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
+
+                # Insert new patient
+                db.session.execute(text("""
+                    INSERT INTO patients (patient_id, first_name, last_name, medical_history, ssn)
+                    VALUES (
+                        :patient_id,
+                        :first_name,
+                        :last_name,
+                        :medical_history,
+                        :ssn
+                    )
                 """), params)
             except Exception as e:
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
@@ -363,7 +376,31 @@ def get_patients():
             'ssn': row.ssn
         })
     return response_json, 200
-    
+
+@app.route("/patients/<int:patient_id>", methods=["DELETE"])
+@login_required
+@swag_from("docs/patient/delete.yml")
+def delete_patient(patient_id):
+    try:
+        result = db.session.execute(
+            text("SELECT * FROM patients WHERE patient_id = :patient_id"),
+            {"patient_id": patient_id}
+        )
+        if result.first() is None:
+            return Response(f"No patient with ID {patient_id}", status=400)
+
+        db.session.execute(
+            text("DELETE FROM patients WHERE patient_id = :patient_id"),
+            {"patient_id": patient_id}
+        )
+
+    except Exception as e:
+        print(f"DELETE ERROR:: {e}")
+        return Response(status=500)
+    else:
+        db.session.commit()
+        return Response(status=200)
+
 
 @app.route("/orders", methods=['GET'])
 @login_required

@@ -1,0 +1,24 @@
+Patient Records
+---
+tags:
+  - Patients
+summary: Delete a patient by ID
+description: Deletes the patient with the specified patient_id from the system.
+operationId: deletePatient
+parameters:
+  - name: patient_id
+    in: path
+    required: true
+    description: ID of the patient to delete
+    schema:
+      type: integer
+      example: 1
+responses:
+  '200':
+    description: Patient successfully deleted
+  '400':
+    description: Patient not found
+  '500':
+    description: Server error during deletion
+security:
+  - cookieAuth: []
